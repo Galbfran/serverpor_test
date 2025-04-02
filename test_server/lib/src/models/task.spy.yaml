@@ -20,6 +20,6 @@ table: task
 # Eg. `List<int>?` or `List<MyOtherClass?>`.
 fields:
   description: String
-  end: bool 
-  createAt: DateTime 
-  userId: int?
+  end: bool , default=false
+  createAt: DateTime , default=now
+  user: User?, relation()

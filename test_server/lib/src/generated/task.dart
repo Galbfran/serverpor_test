@@ -10,22 +10,26 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod/serverpod.dart' as _i1;
+import 'user.dart' as _i2;
 
 abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
   Task._({
     this.id,
     required this.description,
-    required this.end,
-    required this.createAt,
-    this.userId,
-  });
+    bool? end,
+    DateTime? createAt,
+    required this.userId,
+    this.user,
+  })  : end = end ?? false,
+        createAt = createAt ?? DateTime.now();
 
   factory Task({
     int? id,
     required String description,
-    required bool end,
-    required DateTime createAt,
-    int? userId,
+    bool? end,
+    DateTime? createAt,
+    required int userId,
+    _i2.User? user,
   }) = _TaskImpl;
 
   factory Task.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -35,7 +39,11 @@ abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
       end: jsonSerialization['end'] as bool,
       createAt:
           _i1.DateTimeJsonExtension.fromJson(jsonSerialization['createAt']),
-      userId: jsonSerialization['userId'] as int?,
+      userId: jsonSerialization['userId'] as int,
+      user: jsonSerialization['user'] == null
+          ? null
+          : _i2.User.fromJson(
+              (jsonSerialization['user'] as Map<String, dynamic>)),
     );
   }
 
@@ -52,7 +60,9 @@ abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
 
   DateTime createAt;
 
-  int? userId;
+  int userId;
+
+  _i2.User? user;
 
   @override
   _i1.Table get table => t;
@@ -66,6 +76,7 @@ abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
     bool? end,
     DateTime? createAt,
     int? userId,
+    _i2.User? user,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -74,7 +85,8 @@ abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
       'description': description,
       'end': end,
       'createAt': createAt.toJson(),
-      if (userId != null) 'userId': userId,
+      'userId': userId,
+      if (user != null) 'user': user?.toJson(),
     };
   }
 
@@ -85,12 +97,13 @@ abstract class Task implements _i1.TableRow, _i1.ProtocolSerialization {
       'description': description,
       'end': end,
       'createAt': createAt.toJson(),
-      if (userId != null) 'userId': userId,
+      'userId': userId,
+      if (user != null) 'user': user?.toJsonForProtocol(),
     };
   }
 
-  static TaskInclude include() {
-    return TaskInclude._();
+  static TaskInclude include({_i2.UserInclude? user}) {
+    return TaskInclude._(user: user);
   }
 
   static TaskIncludeList includeList({
@@ -125,15 +138,17 @@ class _TaskImpl extends Task {
   _TaskImpl({
     int? id,
     required String description,
-    required bool end,
-    required DateTime createAt,
-    int? userId,
+    bool? end,
+    DateTime? createAt,
+    required int userId,
+    _i2.User? user,
   }) : super._(
           id: id,
           description: description,
           end: end,
           createAt: createAt,
           userId: userId,
+          user: user,
         );
 
   /// Returns a shallow copy of this [Task]
@@ -145,14 +160,16 @@ class _TaskImpl extends Task {
     String? description,
     bool? end,
     DateTime? createAt,
-    Object? userId = _Undefined,
+    int? userId,
+    Object? user = _Undefined,
   }) {
     return Task(
       id: id is int? ? id : this.id,
       description: description ?? this.description,
       end: end ?? this.end,
       createAt: createAt ?? this.createAt,
-      userId: userId is int? ? userId : this.userId,
+      userId: userId ?? this.userId,
+      user: user is _i2.User? ? user : this.user?.copyWith(),
     );
   }
 }
@@ -166,10 +183,12 @@ class TaskTable extends _i1.Table {
     end = _i1.ColumnBool(
       'end',
       this,
+      hasDefault: true,
     );
     createAt = _i1.ColumnDateTime(
       'createAt',
       this,
+      hasDefault: true,
     );
     userId = _i1.ColumnInt(
       'userId',
@@ -185,6 +204,21 @@ class TaskTable extends _i1.Table {
 
   late final _i1.ColumnInt userId;
 
+  _i2.UserTable? _user;
+
+  _i2.UserTable get user {
+    if (_user != null) return _user!;
+    _user = _i1.createRelationTable(
+      relationFieldName: 'user',
+      field: Task.t.userId,
+      foreignField: _i2.User.t.id,
+      tableRelation: tableRelation,
+      createTable: (foreignTableRelation) =>
+          _i2.UserTable(tableRelation: foreignTableRelation),
+    );
+    return _user!;
+  }
+
   @override
   List<_i1.Column> get columns => [
         id,
@@ -193,13 +227,25 @@ class TaskTable extends _i1.Table {
         createAt,
         userId,
       ];
+
+  @override
+  _i1.Table? getRelationTable(String relationField) {
+    if (relationField == 'user') {
+      return user;
+    }
+    return null;
+  }
 }
 
 class TaskInclude extends _i1.IncludeObject {
-  TaskInclude._();
+  TaskInclude._({_i2.UserInclude? user}) {
+    _user = user;
+  }
+
+  _i2.UserInclude? _user;
 
   @override
-  Map<String, _i1.Include?> get includes => {};
+  Map<String, _i1.Include?> get includes => {'user': _user};
 
   @override
   _i1.Table get table => Task.t;
@@ -227,6 +273,8 @@ class TaskIncludeList extends _i1.IncludeList {
 
 class TaskRepository {
   const TaskRepository._();
+
+  final attachRow = const TaskAttachRowRepository._();
 
   /// Returns a list of [Task]s matching the given query parameters.
   ///
@@ -259,6 +307,7 @@ class TaskRepository {
     bool orderDescending = false,
     _i1.OrderByListBuilder<TaskTable>? orderByList,
     _i1.Transaction? transaction,
+    TaskInclude? include,
   }) async {
     return session.db.find<Task>(
       where: where?.call(Task.t),
@@ -268,6 +317,7 @@ class TaskRepository {
       limit: limit,
       offset: offset,
       transaction: transaction,
+      include: include,
     );
   }
 
@@ -296,6 +346,7 @@ class TaskRepository {
     bool orderDescending = false,
     _i1.OrderByListBuilder<TaskTable>? orderByList,
     _i1.Transaction? transaction,
+    TaskInclude? include,
   }) async {
     return session.db.findFirstRow<Task>(
       where: where?.call(Task.t),
@@ -304,6 +355,7 @@ class TaskRepository {
       orderDescending: orderDescending,
       offset: offset,
       transaction: transaction,
+      include: include,
     );
   }
 
@@ -312,10 +364,12 @@ class TaskRepository {
     _i1.Session session,
     int id, {
     _i1.Transaction? transaction,
+    TaskInclude? include,
   }) async {
     return session.db.findById<Task>(
       id,
       transaction: transaction,
+      include: include,
     );
   }
 
@@ -433,6 +487,33 @@ class TaskRepository {
     return session.db.count<Task>(
       where: where?.call(Task.t),
       limit: limit,
+      transaction: transaction,
+    );
+  }
+}
+
+class TaskAttachRowRepository {
+  const TaskAttachRowRepository._();
+
+  /// Creates a relation between the given [Task] and [User]
+  /// by setting the [Task]'s foreign key `userId` to refer to the [User].
+  Future<void> user(
+    _i1.Session session,
+    Task task,
+    _i2.User user, {
+    _i1.Transaction? transaction,
+  }) async {
+    if (task.id == null) {
+      throw ArgumentError.notNull('task.id');
+    }
+    if (user.id == null) {
+      throw ArgumentError.notNull('user.id');
+    }
+
+    var $task = task.copyWith(userId: user.id);
+    await session.db.updateRow<Task>(
+      $task,
+      columns: [Task.t.userId],
       transaction: transaction,
     );
   }

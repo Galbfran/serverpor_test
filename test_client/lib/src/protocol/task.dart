@@ -10,22 +10,26 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:serverpod_client/serverpod_client.dart' as _i1;
+import 'user.dart' as _i2;
 
 abstract class Task implements _i1.SerializableModel {
   Task._({
     this.id,
     required this.description,
-    required this.end,
-    required this.createAt,
-    this.userId,
-  });
+    bool? end,
+    DateTime? createAt,
+    required this.userId,
+    this.user,
+  })  : end = end ?? false,
+        createAt = createAt ?? DateTime.now();
 
   factory Task({
     int? id,
     required String description,
-    required bool end,
-    required DateTime createAt,
-    int? userId,
+    bool? end,
+    DateTime? createAt,
+    required int userId,
+    _i2.User? user,
   }) = _TaskImpl;
 
   factory Task.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -35,7 +39,11 @@ abstract class Task implements _i1.SerializableModel {
       end: jsonSerialization['end'] as bool,
       createAt:
           _i1.DateTimeJsonExtension.fromJson(jsonSerialization['createAt']),
-      userId: jsonSerialization['userId'] as int?,
+      userId: jsonSerialization['userId'] as int,
+      user: jsonSerialization['user'] == null
+          ? null
+          : _i2.User.fromJson(
+              (jsonSerialization['user'] as Map<String, dynamic>)),
     );
   }
 
@@ -50,7 +58,9 @@ abstract class Task implements _i1.SerializableModel {
 
   DateTime createAt;
 
-  int? userId;
+  int userId;
+
+  _i2.User? user;
 
   /// Returns a shallow copy of this [Task]
   /// with some or all fields replaced by the given arguments.
@@ -61,6 +71,7 @@ abstract class Task implements _i1.SerializableModel {
     bool? end,
     DateTime? createAt,
     int? userId,
+    _i2.User? user,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -69,7 +80,8 @@ abstract class Task implements _i1.SerializableModel {
       'description': description,
       'end': end,
       'createAt': createAt.toJson(),
-      if (userId != null) 'userId': userId,
+      'userId': userId,
+      if (user != null) 'user': user?.toJson(),
     };
   }
 
@@ -85,15 +97,17 @@ class _TaskImpl extends Task {
   _TaskImpl({
     int? id,
     required String description,
-    required bool end,
-    required DateTime createAt,
-    int? userId,
+    bool? end,
+    DateTime? createAt,
+    required int userId,
+    _i2.User? user,
   }) : super._(
           id: id,
           description: description,
           end: end,
           createAt: createAt,
           userId: userId,
+          user: user,
         );
 
   /// Returns a shallow copy of this [Task]
@@ -105,14 +119,16 @@ class _TaskImpl extends Task {
     String? description,
     bool? end,
     DateTime? createAt,
-    Object? userId = _Undefined,
+    int? userId,
+    Object? user = _Undefined,
   }) {
     return Task(
       id: id is int? ? id : this.id,
       description: description ?? this.description,
       end: end ?? this.end,
       createAt: createAt ?? this.createAt,
-      userId: userId is int? ? userId : this.userId,
+      userId: userId ?? this.userId,
+      user: user is _i2.User? ? user : this.user?.copyWith(),
     );
   }
 }
